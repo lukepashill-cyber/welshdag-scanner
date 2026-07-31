@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WelshDAG Scanner</string>
+    <string name="app_title">WelshDAG Scanner</string>
+    <string name="connect_wallet">Connect Wallet</string>
+    <string name="import_wallet">Import Wallet</string>
+    <string name="generate_new_wallet">Generate New Wallet</string>
+    <string name="import_private_key">Import Private Key</string>
+    <string name="check_balance">Check Balance</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="refresh">Refresh</string>
+    <string name="wallet_address">Wallet Address</string>
+    <string name="wallet_connected">Wallet Connected</string>
+    <string name="balance_check">Balance Check</string>
+    <string name="online">Online</string>
+    <string name="offline">Offline</string>
+    <string name="back">Back</string>
+    <string name="error">Error</string>
+    <string name="loading">Loading...</string>
+    <string name="fetching_balances">Fetching balances...</string>
+</resources>
