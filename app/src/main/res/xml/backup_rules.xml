@@ -1,7 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- The wallet lives in EncryptedSharedPreferences keyed to this device's
-         hardware keystore. A backup would restore ciphertext no other device
-         can decrypt, so exclude it. -->
-    <exclude domain="sharedpref" path="welshdag_wallet.xml" />
+    <!-- The watchlist is public addresses only; nothing here is sensitive. -->
 </full-backup-content>

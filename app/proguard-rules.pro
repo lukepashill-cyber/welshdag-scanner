@@ -52,8 +52,6 @@
 -keep class androidx.lifecycle.** { *; }
 
 # Keep Web3j
--keep class org.web3j.** { *; }
--keepclassmembers class org.web3j.** { *; }
 
 # Keep coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory

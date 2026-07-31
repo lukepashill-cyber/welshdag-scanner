@@ -33,8 +33,20 @@ data class AccountBalance(
         get() = rpcEndpoint.removePrefix("https://").removePrefix("http://").trimEnd('/')
 }
 
-data class WalletInfo(
+/**
+ * A public address the user has chosen to follow. Deliberately holds no key
+ * material — the app only ever reads from the chain.
+ */
+data class WatchedAddress(
     val address: String,
-    val privateKey: String,
-    val createdAt: Long = System.currentTimeMillis()
+    val label: String? = null,
+    val addedAt: Long = System.currentTimeMillis()
 )
+
+/** 0x followed by 40 hex characters. */
+fun isValidAddress(input: String): Boolean {
+    val trimmed = input.trim()
+    if (!trimmed.startsWith("0x") && !trimmed.startsWith("0X")) return false
+    val body = trimmed.drop(2)
+    return body.length == 40 && body.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
+}

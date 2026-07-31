@@ -25,7 +25,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.welshdag.scanner.ui.screens.AddressScreen
 import com.welshdag.scanner.ui.screens.ExplorerScreen
-import com.welshdag.scanner.ui.screens.WalletConnectScreen
+import com.welshdag.scanner.ui.screens.WatchlistScreen
 import com.welshdag.scanner.ui.theme.WelshDagTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -33,7 +33,7 @@ private data class Tab(val route: String, val label: String, val icon: ImageVect
 
 private val TABS = listOf(
     Tab("explorer", "Explorer", Icons.Filled.Explore),
-    Tab("wallet", "Wallet", Icons.Filled.AccountBalanceWallet)
+    Tab("wallet", "My addresses", Icons.Filled.AccountBalanceWallet)
 )
 
 @AndroidEntryPoint
@@ -91,7 +91,7 @@ private fun AppRoot() {
                 ExplorerScreen(navController = navController)
             }
             composable("wallet") {
-                WalletConnectScreen(navController = navController)
+                WatchlistScreen(navController = navController)
             }
             composable("address/{address}") { entry ->
                 AddressScreen(

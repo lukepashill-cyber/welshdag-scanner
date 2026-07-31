@@ -44,7 +44,6 @@ android {
         kotlinCompilerExtensionVersion = "1.5.3"
     }
 
-    // web3j pulls in bouncycastle, which ships duplicate metadata entries
     packaging {
         resources {
             excludes += setOf(
@@ -83,9 +82,7 @@ dependencies {
     implementation(libs.retrofit.converter.gson)
     implementation(libs.gson)
 
-    implementation(libs.androidx.security.crypto)
 
-    implementation(libs.web3j.crypto)
 
     implementation(libs.kotlinx.coroutines.android)
 

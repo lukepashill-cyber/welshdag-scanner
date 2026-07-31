@@ -9,8 +9,6 @@ composeBom = "2023.10.01"
 hilt = "2.48"
 retrofit = "2.9.0"
 okhttp = "4.11.0"
-securityCrypto = "1.1.0-alpha06"
-web3j = "4.9.8"
 coroutines = "1.7.3"
 gson = "2.10.1"
 navigationCompose = "2.7.5"
@@ -39,9 +37,7 @@ retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-
 okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 
-androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 
-web3j-crypto = { group = "org.web3j", name = "crypto", version.ref = "web3j" }
 
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 
