@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.welshdag.scanner.network.WalletInfo
 import com.welshdag.scanner.ui.viewmodel.WalletViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,13 +50,11 @@ fun WalletConnectScreen(
 ) {
     val walletState by viewModel.walletState.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
-    var privateKeyInput by remember { mutableStateOf("") }
-    var showPrivateKeyInput by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Wallet Connection") },
+                title = { Text("Wallet") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -77,25 +77,40 @@ fun WalletConnectScreen(
                     .fillMaxSize()
                     .padding(24.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                when (walletState) {
-                    is WalletViewModel.WalletState.Connected -> {
-                        val wallet = (walletState as WalletViewModel.WalletState.Connected).wallet
-                        WalletConnectedView(wallet, viewModel, navController)
+                when (val state = walletState) {
+                    WalletViewModel.WalletState.Loading -> {
+                        Spacer(modifier = Modifier.height(48.dp))
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
-                    WalletViewModel.WalletState.Empty -> {
-                        WalletDisconnectedView(
-                            viewModel,
-                            privateKeyInput,
-                            { privateKeyInput = it },
-                            showPrivateKeyInput,
-                            { showPrivateKeyInput = it },
-                            errorMessage,
-                            navController
-                        )
-                    }
+
+                    is WalletViewModel.WalletState.Connected -> ConnectedWallet(
+                        wallet = state.wallet,
+                        onCheckBalance = { navController.navigate("balance/${state.wallet.address}") },
+                        onDisconnect = viewModel::disconnectWallet
+                    )
+
+                    WalletViewModel.WalletState.Empty -> DisconnectedWallet(
+                        onGenerate = viewModel::generateNewWallet,
+                        onImport = viewModel::importPrivateKey
+                    )
+                }
+
+                errorMessage?.let { message ->
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = message,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(12.dp)
+                    )
                 }
             }
         }
@@ -103,17 +118,17 @@ fun WalletConnectScreen(
 }
 
 @Composable
-private fun WalletConnectedView(
-    wallet: com.welshdag.scanner.network.WalletInfo,
-    viewModel: WalletViewModel,
-    navController: NavController
+private fun ConnectedWallet(
+    wallet: WalletInfo,
+    onCheckBalance: () -> Unit,
+    onDisconnect: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Wallet Connected",
+            text = "Wallet connected",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
@@ -122,7 +137,7 @@ private fun WalletConnectedView(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Address",
+            text = "ADDRESS",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             fontWeight = FontWeight.SemiBold
@@ -136,17 +151,14 @@ private fun WalletConnectedView(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(8.dp)
-                )
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
                 .padding(12.dp)
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = { navController.navigate("balance/${wallet.address}") },
+            onClick = onCheckBalance,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
@@ -155,13 +167,13 @@ private fun WalletConnectedView(
                 containerColor = MaterialTheme.colorScheme.tertiary
             )
         ) {
-            Text("Check Balance", fontWeight = FontWeight.SemiBold)
+            Text("Check balance", fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { viewModel.disconnectWallet() },
+            onClick = onDisconnect,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
@@ -176,21 +188,20 @@ private fun WalletConnectedView(
 }
 
 @Composable
-private fun WalletDisconnectedView(
-    viewModel: WalletViewModel,
-    privateKeyInput: String,
-    onPrivateKeyChange: (String) -> Unit,
-    showPrivateKeyInput: Boolean,
-    onShowPrivateKeyToggle: (Boolean) -> Unit,
-    errorMessage: String?,
-    navController: NavController
+private fun DisconnectedWallet(
+    onGenerate: () -> Unit,
+    onImport: (String) -> Unit
 ) {
+    var privateKeyInput by remember { mutableStateOf("") }
+    var showImportField by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
     ) {
         Button(
-            onClick = { viewModel.generateNewWallet() },
+            onClick = onGenerate,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
@@ -199,13 +210,13 @@ private fun WalletDisconnectedView(
                 containerColor = MaterialTheme.colorScheme.primary
             )
         ) {
-            Text("Generate New Wallet", fontWeight = FontWeight.SemiBold)
+            Text("Generate new wallet", fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { onShowPrivateKeyToggle(!showPrivateKeyInput) },
+            onClick = { showImportField = !showImportField },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
@@ -214,27 +225,28 @@ private fun WalletDisconnectedView(
                 containerColor = MaterialTheme.colorScheme.secondary
             )
         ) {
-            Text("Import Private Key", fontWeight = FontWeight.SemiBold)
+            Text("Import private key", fontWeight = FontWeight.SemiBold)
         }
 
-        if (showPrivateKeyInput) {
+        if (showImportField) {
             Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedTextField(
                 value = privateKeyInput,
-                onValueChange = onPrivateKeyChange,
-                label = { Text("Private Key (Hex)") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
+                onValueChange = { privateKeyInput = it },
+                label = { Text("Private key (64 hex characters)") },
+                placeholder = { Text("0x…") },
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                placeholder = { Text("0x...") }
+                singleLine = false,
+                maxLines = 3
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { viewModel.importPrivateKey(privateKeyInput) },
+                onClick = { onImport(privateKeyInput) },
+                enabled = privateKeyInput.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -245,22 +257,6 @@ private fun WalletDisconnectedView(
             ) {
                 Text("Import", fontWeight = FontWeight.SemiBold)
             }
-        }
-
-        if (errorMessage != null) {
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = errorMessage,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
-                        RoundedCornerShape(8.dp)
-                    )
-                    .padding(12.dp)
-            )
         }
     }
 }

@@ -6,60 +6,89 @@ import com.welshdag.scanner.network.RpcService
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.math.BigDecimal
+import java.math.BigInteger
+import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class RpcRepository @Inject constructor(
-    private val primaryRpcService: RpcService
+    private val okHttpClient: OkHttpClient
 ) {
-    private val rpcEndpoints = listOf(
-        "https://rpc.welshdag.trade",
-        "https://rpc.capedag.com",
-        "https://rpc.bdag-us.org",
-        "https://rpc.dvdmining.com"
-    )
+    private val services: Map<String, RpcService> = RPC_ENDPOINTS.associateWith { endpoint ->
+        Retrofit.Builder()
+            .baseUrl(endpoint)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(RpcService::class.java)
+    }
 
+    /** Queries every endpoint in parallel; one failing endpoint never fails the others. */
     suspend fun getBalance(address: String): List<AccountBalance> = coroutineScope {
-        val balances = rpcEndpoints.map { endpoint ->
+        services.map { (endpoint, service) ->
             async {
                 try {
-                    val retrofit = Retrofit.Builder()
-                        .baseUrl(endpoint)
-                        .addConverterFactory(GsonConverterFactory.create())
-                        .build()
-                    val service = retrofit.create(RpcService::class.java)
-
-                    val request = JsonRpcRequest(
-                        method = "eth_getBalance",
-                        params = listOf(address, "latest")
-                    )
-                    val response = service.call(request)
-
-                    val balanceHex = response.result ?: "0x0"
-                    val balanceWei = balanceHex.removePrefix("0x").toLong(16)
-                    val balanceEth = balanceWei.toBigDecimal().divide(
-                        "1000000000000000000".toBigDecimal()
+                    val response = service.call(
+                        JsonRpcRequest(
+                            method = "eth_getBalance",
+                            params = listOf(address, "latest")
+                        )
                     )
 
-                    AccountBalance(
-                        address = address,
-                        balance = balanceEth.toPlainString(),
-                        rpcEndpoint = endpoint,
-                        isOnline = true
-                    )
+                    val error = response.error
+                    if (error != null) {
+                        AccountBalance(address, endpoint, isOnline = true, error = error.message)
+                    } else {
+                        val hex = response.result
+                        if (hex == null) {
+                            AccountBalance(address, endpoint, isOnline = true, error = "Empty result")
+                        } else {
+                            AccountBalance(
+                                address = address,
+                                rpcEndpoint = endpoint,
+                                isOnline = true,
+                                balance = formatWei(hex)
+                            )
+                        }
+                    }
                 } catch (e: Exception) {
                     AccountBalance(
                         address = address,
-                        balance = "Error",
                         rpcEndpoint = endpoint,
-                        isOnline = false
+                        isOnline = false,
+                        error = e.message ?: e.javaClass.simpleName
                     )
                 }
             }
-        }
-        balances.awaitAll()
+        }.awaitAll()
+    }
+
+    /**
+     * Wei is up to 2^256, so this must go through BigInteger — a Long overflows
+     * at roughly 9.2 tokens' worth of wei.
+     */
+    private fun formatWei(hex: String): String {
+        val wei = BigInteger(hex.removePrefix("0x").ifEmpty { "0" }, 16)
+        return BigDecimal(wei)
+            .divide(WEI_PER_TOKEN, 8, RoundingMode.DOWN)
+            .stripTrailingZeros()
+            .toPlainString()
+    }
+
+    private companion object {
+        val WEI_PER_TOKEN: BigDecimal = BigDecimal.TEN.pow(18)
+
+        // Trailing slash is required — Retrofit rejects a baseUrl without one.
+        val RPC_ENDPOINTS = listOf(
+            "https://rpc.welshdag.trade/",
+            "https://rpc.capedag.com/",
+            "https://rpc.bdag-us.org/",
+            "https://rpc.dvdmining.com/"
+        )
     }
 }

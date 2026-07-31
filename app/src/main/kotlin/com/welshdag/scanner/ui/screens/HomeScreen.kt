@@ -78,26 +78,7 @@ fun HomeScreen(navController: NavController) {
                 )
             ) {
                 Text(
-                    text = "Connect Wallet",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = { navController.navigate("wallet_connect") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary
-                )
-            ) {
-                Text(
-                    text = "Import Wallet",
+                    text = "Open wallet",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold
                 )

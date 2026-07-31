@@ -10,11 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -41,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.welshdag.scanner.network.AccountBalance
 import com.welshdag.scanner.ui.viewmodel.BalanceViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,14 +61,17 @@ fun BalanceScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Balance Check") },
+                title = { Text("Balance") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.refreshBalances(address) }) {
+                    IconButton(
+                        onClick = { viewModel.fetchBalances(address) },
+                        enabled = !isLoading
+                    ) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
                     }
                 },
@@ -85,20 +88,14 @@ fun BalanceScreen(
                 .padding(paddingValues)
         ) {
             if (isLoading && balances.isEmpty()) {
-                Box(
+                Column(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Fetching balances...")
-                    }
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Querying RPC endpoints…")
                 }
             } else {
                 LazyColumn(
@@ -108,7 +105,7 @@ fun BalanceScreen(
                 ) {
                     item {
                         Text(
-                            text = "Wallet Address",
+                            text = "ADDRESS",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                             fontWeight = FontWeight.SemiBold
@@ -124,17 +121,15 @@ fun BalanceScreen(
                                     MaterialTheme.colorScheme.surface,
                                     RoundedCornerShape(8.dp)
                                 )
-                                .padding(12.dp),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                                .padding(12.dp)
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
 
-                    if (errorMessage != null) {
+                    errorMessage?.let { message ->
                         item {
                             Text(
-                                text = errorMessage!!,
+                                text = message,
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier
@@ -150,24 +145,27 @@ fun BalanceScreen(
                     }
 
                     items(balances) { balance ->
-                        BalanceCard(balance, isLoading)
+                        BalanceCard(balance)
                         Spacer(modifier = Modifier.height(12.dp))
                     }
 
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
-                            onClick = { viewModel.refreshBalances(address) },
+                            onClick = { viewModel.fetchBalances(address) },
+                            enabled = !isLoading,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp),
-                            enabled = !isLoading,
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
-                            Text("Refresh", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = if (isLoading) "Refreshing…" else "Refresh",
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
@@ -177,70 +175,62 @@ fun BalanceScreen(
 }
 
 @Composable
-private fun BalanceCard(
-    balance: com.welshdag.scanner.network.AccountBalance,
-    isLoading: Boolean
-) {
-    Box(
+private fun BalanceCard(balance: AccountBalance) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                MaterialTheme.colorScheme.surface,
-                RoundedCornerShape(12.dp)
-            )
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
             .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = balance.rpcEndpoint.replace("https://", "").replace("http://", ""),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (balance.isOnline) "Online" else "Offline",
-                        fontSize = 12.sp,
-                        color = if (balance.isOnline) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
-                    )
-                }
-
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .padding(8.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
+            Text(
+                text = balance.host,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .size(8.dp)
                     .background(
-                        MaterialTheme.colorScheme.background,
-                        RoundedCornerShape(8.dp)
+                        color = if (balance.error == null) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
+                        shape = RoundedCornerShape(4.dp)
                     )
-                    .padding(12.dp)
-            ) {
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
+                .padding(12.dp)
+        ) {
+            val error = balance.error
+            if (error != null) {
                 Text(
-                    text = "${balance.balance} BDAG",
-                    fontSize = 16.sp,
+                    text = error,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                Text(
+                    text = "${balance.balance ?: "0"} BDAG",
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )

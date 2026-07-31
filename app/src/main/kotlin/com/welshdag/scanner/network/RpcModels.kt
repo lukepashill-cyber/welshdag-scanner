@@ -1,7 +1,5 @@
 package com.welshdag.scanner.network
 
-import com.google.gson.annotations.SerializedName
-
 data class JsonRpcRequest(
     val jsonrpc: String = "2.0",
     val method: String,
@@ -10,10 +8,10 @@ data class JsonRpcRequest(
 )
 
 data class JsonRpcResponse<T>(
-    val jsonrpc: String,
-    val result: T?,
-    val error: JsonRpcError?,
-    val id: Int
+    val jsonrpc: String? = null,
+    val result: T? = null,
+    val error: JsonRpcError? = null,
+    val id: Int = 0
 )
 
 data class JsonRpcError(
@@ -21,17 +19,19 @@ data class JsonRpcError(
     val message: String
 )
 
-data class BalanceResult(
-    @SerializedName("result")
-    val balance: String
-)
-
+/**
+ * One endpoint's answer for one address. [balance] is null whenever [error] is set.
+ */
 data class AccountBalance(
     val address: String,
-    val balance: String,
     val rpcEndpoint: String,
-    val isOnline: Boolean
-)
+    val isOnline: Boolean,
+    val balance: String? = null,
+    val error: String? = null
+) {
+    val host: String
+        get() = rpcEndpoint.removePrefix("https://").removePrefix("http://").trimEnd('/')
+}
 
 data class WalletInfo(
     val address: String,

@@ -1,72 +1,65 @@
 package com.welshdag.scanner.security
 
 import android.content.Context
-import androidx.datastore.preferences.Preferences
-import androidx.datastore.preferences.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.google.gson.Gson
-import com.welshdag.scanner.di.dataStore
 import com.welshdag.scanner.network.WalletInfo
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Wallet persistence. Everything — address and private key alike — lives in
+ * EncryptedSharedPreferences so the key is never written to disk in the clear.
+ */
 @Singleton
 class WalletStorage @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) {
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    private val prefs by lazy {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
 
-    private val encryptedPrefs = EncryptedSharedPreferences.create(
-        context,
-        "wallet_prefs",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
-
-    private val gson = Gson()
-
-    suspend fun saveWallet(wallet: WalletInfo) {
-        context.dataStore.edit { preferences ->
-            preferences[WALLET_KEY] = gson.toJson(wallet)
-        }
-        encryptedPrefs.edit().putString(
-            PRIVATE_KEY_KEY,
-            wallet.privateKey
-        ).apply()
+        EncryptedSharedPreferences.create(
+            context,
+            PREFS_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
     }
 
-    fun getWalletFlow(): Flow<WalletInfo?> {
-        return context.dataStore.data.map { preferences ->
-            val walletJson = preferences[WALLET_KEY] ?: return@map null
-            gson.fromJson(walletJson, WalletInfo::class.java)
-        }
+    suspend fun saveWallet(wallet: WalletInfo) = withContext(Dispatchers.IO) {
+        prefs.edit()
+            .putString(KEY_ADDRESS, wallet.address)
+            .putString(KEY_PRIVATE_KEY, wallet.privateKey)
+            .putLong(KEY_CREATED_AT, wallet.createdAt)
+            .commit()
+        Unit
     }
 
-    suspend fun getWallet(): WalletInfo? {
-        val preferences = context.dataStore.data.let { it }
-        val walletJson = preferences.map { it[WALLET_KEY] }.let { flow ->
-            var result: String? = null
-            flow.collect { result = it }
-            result
-        }
-        return walletJson?.let { gson.fromJson(it, WalletInfo::class.java) }
+    suspend fun getWallet(): WalletInfo? = withContext(Dispatchers.IO) {
+        val address = prefs.getString(KEY_ADDRESS, null) ?: return@withContext null
+        val privateKey = prefs.getString(KEY_PRIVATE_KEY, null) ?: return@withContext null
+        WalletInfo(
+            address = address,
+            privateKey = privateKey,
+            createdAt = prefs.getLong(KEY_CREATED_AT, 0L)
+        )
     }
 
-    suspend fun clearWallet() {
-        context.dataStore.edit { preferences ->
-            preferences.remove(WALLET_KEY)
-        }
-        encryptedPrefs.edit().remove(PRIVATE_KEY_KEY).apply()
+    suspend fun clearWallet() = withContext(Dispatchers.IO) {
+        prefs.edit().clear().commit()
+        Unit
     }
 
-    companion object {
-        private const val WALLET_KEY = "wallet_info"
-        private const val PRIVATE_KEY_KEY = "private_key"
+    private companion object {
+        const val PREFS_NAME = "welshdag_wallet"
+        const val KEY_ADDRESS = "address"
+        const val KEY_PRIVATE_KEY = "private_key"
+        const val KEY_CREATED_AT = "created_at"
     }
 }
