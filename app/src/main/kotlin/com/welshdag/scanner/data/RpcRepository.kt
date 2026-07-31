@@ -88,7 +88,8 @@ class RpcRepository @Inject constructor(
             "https://rpc.welshdag.trade/",
             "https://rpc.capedag.com/",
             "https://rpc.bdag-us.org/",
-            "https://rpc.dvdmining.com/"
+            "https://rpc.dvdmining.com/",
+            "https://rpc.bdagscan.com/"
         )
     }
 }

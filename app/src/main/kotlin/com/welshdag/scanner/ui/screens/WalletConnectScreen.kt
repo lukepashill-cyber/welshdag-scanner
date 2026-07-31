@@ -12,14 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -55,11 +51,6 @@ fun WalletConnectScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Wallet") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -87,7 +78,7 @@ fun WalletConnectScreen(
 
                     is WalletViewModel.WalletState.Connected -> ConnectedWallet(
                         wallet = state.wallet,
-                        onCheckBalance = { navController.navigate("balance/${state.wallet.address}") },
+                        onCheckBalance = { navController.navigate("address/${state.wallet.address}") },
                         onDisconnect = viewModel::disconnectWallet
                     )
 
