@@ -86,7 +86,9 @@ fun AddressScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .padding(padding)
         ) {
-            if (isLoading && detail == null && peerBalances.isEmpty()) {
+            val showSpinner = isLoading && detail == null && peerBalances.isEmpty()
+
+            if (showSpinner) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -96,9 +98,7 @@ fun AddressScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Loading address…")
                 }
-                return@Box
-            }
-
+            } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -214,6 +214,7 @@ fun AddressScreen(
                 }
 
                 item { Spacer(modifier = Modifier.height(24.dp)) }
+            }
             }
         }
     }
